@@ -16,8 +16,16 @@ const efsw_common_sources = &.{
     "deps/efsw/src/efsw/System.cpp",
     "deps/efsw/src/efsw/Watcher.cpp",
     "deps/efsw/src/efsw/WatcherGeneric.cpp",
+};
+
+const efsw_posix_platform_sources = &.{
     "deps/efsw/src/efsw/platform/posix/FileSystemImpl.cpp",
     "deps/efsw/src/efsw/platform/posix/SystemImpl.cpp",
+};
+
+const efsw_windows_platform_sources = &.{
+    "deps/efsw/src/efsw/platform/win/FileSystemImpl.cpp",
+    "deps/efsw/src/efsw/platform/win/SystemImpl.cpp",
 };
 
 const efsw_macos_sources = &.{
@@ -25,6 +33,28 @@ const efsw_macos_sources = &.{
     "deps/efsw/src/efsw/FileWatcherKqueue.cpp",
     "deps/efsw/src/efsw/WatcherFSEvents.cpp",
     "deps/efsw/src/efsw/WatcherKqueue.cpp",
+};
+
+const efsw_windows_sources = &.{
+    "deps/efsw/src/efsw/FileWatcherWin32.cpp",
+    "deps/efsw/src/efsw/WatcherWin32.cpp",
+};
+
+const efsw_inotify_sources = &.{
+    "deps/efsw/src/efsw/FileWatcherInotify.cpp",
+    "deps/efsw/src/efsw/WatcherInotify.cpp",
+};
+
+const efsw_kqueue_sources = &.{
+    "deps/efsw/src/efsw/FileWatcherKqueue.cpp",
+    "deps/efsw/src/efsw/WatcherKqueue.cpp",
+};
+
+const cxx_non_msvc_flags = &.{
+    "-std=c++11",
+    "-fPIC",
+    "-Wall",
+    "-Wno-long-long",
 };
 
 pub fn build(b: *std.Build) void {
@@ -46,29 +76,55 @@ pub fn build(b: *std.Build) void {
     efsw.addIncludePath(b.path("deps/efsw/src"));
     efsw.addCSourceFiles(.{
         .files = efsw_common_sources,
-        .flags = &.{
-            "-std=c++11",
-            "-fPIC",
-            "-Wall",
-            "-Wno-long-long",
-        },
+        .flags = cxx_non_msvc_flags,
     });
 
     switch (target_query.os.tag) {
         .macos => {
             efsw.addCSourceFiles(.{
+                .files = efsw_posix_platform_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.addCSourceFiles(.{
                 .files = efsw_macos_sources,
-                .flags = &.{
-                    "-std=c++11",
-                    "-fPIC",
-                    "-Wall",
-                    "-Wno-long-long",
-                },
+                .flags = cxx_non_msvc_flags,
             });
             efsw.linkFramework("CoreFoundation");
             efsw.linkFramework("CoreServices");
         },
-        else => @panic("efswz currently only supports building efsw on macOS"),
+        .windows => {
+            efsw.addCSourceFiles(.{
+                .files = efsw_windows_platform_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.addCSourceFiles(.{
+                .files = efsw_windows_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+        },
+        .linux => {
+            efsw.addCSourceFiles(.{
+                .files = efsw_posix_platform_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.addCSourceFiles(.{
+                .files = efsw_inotify_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.root_module.linkSystemLibrary("pthread", .{});
+        },
+        .freebsd, .openbsd, .netbsd, .dragonfly => {
+            efsw.addCSourceFiles(.{
+                .files = efsw_posix_platform_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.addCSourceFiles(.{
+                .files = efsw_kqueue_sources,
+                .flags = cxx_non_msvc_flags,
+            });
+            efsw.root_module.linkSystemLibrary("pthread", .{});
+        },
+        else => @panic("efswz does not yet wire an efsw backend for this target OS"),
     }
 
     const efswz_mod = b.addModule("efswz", .{
