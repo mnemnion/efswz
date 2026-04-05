@@ -1,0 +1,21 @@
+// Zig package metadata for efswz
+.{
+    .name = .efswz,
+
+    .version = "0.0.1",
+
+    .minimum_zig_version = "0.15.2",
+
+    .fingerprint = 0xfa406e5628edd1b,
+
+    .dependencies = .{},
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "deps",
+        "src",
+        "LICENSE",
+        "README.md",
+    },
+}
