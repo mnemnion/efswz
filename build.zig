@@ -79,6 +79,28 @@ pub fn build(b: *std.Build) void {
     efswz_mod.addIncludePath(b.path("deps/efsw/include"));
     efswz_mod.linkLibrary(efsw);
 
+    const demo_exe = b.addExecutable(.{
+        .name = "watch-demo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/watch-demo.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "efswz", .module = efswz_mod },
+            },
+        }),
+    });
+    demo_exe.root_module.linkLibrary(efsw);
+    b.installArtifact(demo_exe);
+
+    const run_demo = b.addRunArtifact(demo_exe);
+    if (b.args) |args| {
+        run_demo.addArgs(args);
+    }
+
+    const demo_step = b.step("demo", "Build and run the watch demo");
+    demo_step.dependOn(&run_demo.step);
+
     const test_filters = b.option(
         []const []const u8,
         "test-filter",

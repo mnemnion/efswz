@@ -296,7 +296,7 @@ test "addWatch rejects overlong path" {
     );
 }
 
-test "addWatch and addWatchZ type-check with Zig callback" {
+test "addWatch and addWatchZ type-check with Zig callback (comptime)" {
     const State = struct {
         fn handle(
             _: Watcher,
