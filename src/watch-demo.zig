@@ -11,7 +11,7 @@ fn actionName(action: efswz.Action) []const u8 {
 }
 
 fn handleFileAction(
-    _: efswz.Watcher,
+    _: efswz.c.efsw_watcher,
     watch_id: efswz.WatchId,
     dir: []const u8,
     filename: []const u8,
@@ -48,8 +48,9 @@ pub fn main() !void {
         std.log.err("usage: {s} <path>", .{args[0]});
         return error.InvalidArguments;
     }
+    std.debug.print("watching: {s}\n", .{args[1]});
 
-    var watcher = try efswz.Watcher.init(false);
+    var watcher = try efswz.Watcher.init();
     defer watcher.deinit();
 
     const watch_id = watcher.addWatch(
