@@ -3,6 +3,9 @@
 A lightweight Zig library binding [efsw][efsw], "a C++ cross-platform
 file system watcher and notifier".
 
+> [!Note]
+> This was created just before [Night Watch](https://github.com/neurocyte/nightwatch) was released, by a matter of days.  As such I have made no active use of it, and don't intend to either do so or maintain it. You want `nightwatch`, not this.
+
 The module `efswz` wraps the C API bindings to accept and return more
 Zig-native types.  The module is fairly short, and commented in such a
 fashion as to serve as documentation.
@@ -26,14 +29,10 @@ be relative or absolute.
 `efswz` has been built and tested on macOS.  It has been successfully
 cross-compiled for Linux and Windows targets, but not yet tested.
 
-If you try it on one or more of the supported targets, and it works, let
-me know so I can update the README.  If it _doesn't_ work, I'll take a
-patch which claims to fix it, so long as it looks right, but am less
-likely to fix it myself (Linux, maybe, Windows, almost certainly not).
-But you can file an issue if you'd like, I might tag it or something.
-
 Most of the C API wrapper has been wrapped in its turn, with lacunae
 documented in comments.  If those facilities are of such interest to one
 of you that you care to add them, a PR would be accepted.
+
+You don't want this. You want Night Watch.
 
 [efsw]: https://github.com/SpartanJ/efsw
