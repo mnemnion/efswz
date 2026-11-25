@@ -3,6 +3,8 @@
 //! A light adaptation of the EFSW cross-platform directory watching
 //! library.
 
+const root = @This();
+
 /// The raw C bindings to efsw.  Most of these are exposed in `efswz`, but
 /// not all: there are some obscure configurable values which may apply
 /// to your use case, and a customized watch handle can be created via
@@ -12,9 +14,7 @@
 /// consult the header:
 ///
 /// https://github.com/SpartanJ/efsw/blob/master/include/efsw/efsw.h
-pub const c = @cImport({
-    @cInclude("efsw/efsw.h");
-});
+pub const c = @import("efsw_c");
 
 /// Categories of file and directory action reported by the watcher.
 pub const Action = enum(c_int) {
@@ -148,7 +148,7 @@ pub const Watcher = struct {
     /// `WatchError` is caught in the scope in which some `addWatch` function is
     /// called.
     pub fn lastError(_: Watcher) []const u8 {
-        return @This().lastError();
+        return root.lastError();
     }
 
     /// Clear the last error reported by the library.  It is a good idea to
@@ -156,7 +156,7 @@ pub const Watcher = struct {
     /// employed, but only if the application uses a single watcher: if there
     /// are several, it is better to eschew both such functions entirely.
     pub fn clearLastError(_: Watcher) void {
-        @This().clearLastEfswError();
+        root.clearLastError();
     }
 
     /// Add a watch on the `directory` path to the watcher.  This may be called
@@ -232,7 +232,7 @@ pub const Watcher = struct {
     /// Remove a directory from the watch list, by giving the `WatchId` returned
     /// from adding it.  Uses binary search in O(logn).
     pub fn removeWatchById(watcher: *const Watcher, watch_id: WatchId) void {
-        c.efsw_removewatch_byid(watcher.raw, @intFromEnum(watch_id));
+        c.efsw_removewatch_byid(watcher.raw, @backingInt(watch_id));
     }
 
     /// Remove a directory from the watch list, by path name.  The library
@@ -323,10 +323,10 @@ pub fn callbackAdapter(comptime callback: FileActionCallback) c.efsw_pfn_fileact
         ) callconv(.c) void {
             callback(
                 raw_watcher,
-                @enumFromInt(raw_watch_id),
+                @fromBackingInt(@intCast(raw_watch_id)),
                 spanOrEmpty(raw_dir),
                 spanOrEmpty(raw_filename),
-                @enumFromInt(raw_action),
+                @fromBackingInt(@intCast(raw_action)),
                 spanOrEmpty(raw_old_filename),
                 user_data,
             );
@@ -349,7 +349,7 @@ fn mapWatchId(raw: c.efsw_watchid) WatchError!WatchId {
         c.EFSW_REMOTE => WatchError.Remote,
         c.EFSW_WATCHER_FAILED => WatchError.WatcherFailed,
         c.EFSW_UNSPECIFIED => WatchError.Unspecified,
-        else => @enumFromInt(raw),
+        else => @fromBackingInt(@intCast(raw)),
     };
 }
 
@@ -432,7 +432,7 @@ test "callbackAdapter converts callback arguments" {
 
     try std.testing.expect(state.called);
     try std.testing.expectEqual(@as(c.efsw_watcher, @ptrFromInt(0x1234)), state.watch_handle.?);
-    try std.testing.expectEqual(@as(WatchId, @enumFromInt(42)), state.watch_id.?);
+    try std.testing.expectEqual(@as(WatchId, @fromBackingInt(@intCast(42))), state.watch_id.?);
     try std.testing.expectEqualStrings("root/path", state.dir);
     try std.testing.expectEqualStrings("hello.txt", state.filename);
     try std.testing.expectEqual(Action.moved, state.action.?);
