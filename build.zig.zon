@@ -4,11 +4,16 @@
 
     .version = "0.0.1",
 
-    .minimum_zig_version = "0.15.2",
+    .minimum_zig_version = "0.17.1",
 
     .fingerprint = 0xfa406e5628edd1b,
 
-    .dependencies = .{},
+    .dependencies = .{
+        .translate_c = .{
+            .url = "git+https://codeberg.org/ziglang/translate-c?ref=zig-0.17.x#cfac21f3199b2b02ce3fd7db652aa456421fe4ab",
+            .hash = "translate_c-2.0.2-Q_BUWvBNBwDnyehSiuAJmdFcMYHYGA-Jc3KiYdrV2Dqx",
+        },
+    },
 
     .paths = .{
         "build.zig",

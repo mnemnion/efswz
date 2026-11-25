@@ -71,54 +71,53 @@ pub fn build(b: *std.Build) void {
             .link_libcpp = true,
         }),
     });
-    efsw.linkLibCpp();
-    efsw.addIncludePath(b.path("deps/efsw/include"));
-    efsw.addIncludePath(b.path("deps/efsw/src"));
-    efsw.addCSourceFiles(.{
+    efsw.root_module.addIncludePath(b.path("deps/efsw/include"));
+    efsw.root_module.addIncludePath(b.path("deps/efsw/src"));
+    efsw.root_module.addCSourceFiles(.{
         .files = efsw_common_sources,
         .flags = cxx_non_msvc_flags,
     });
 
     switch (target_query.os.tag) {
         .macos => {
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_posix_platform_sources,
                 .flags = cxx_non_msvc_flags,
             });
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_macos_sources,
                 .flags = cxx_non_msvc_flags,
             });
-            efsw.linkFramework("CoreFoundation");
-            efsw.linkFramework("CoreServices");
+            efsw.root_module.linkFramework("CoreFoundation", .{});
+            efsw.root_module.linkFramework("CoreServices", .{});
         },
         .windows => {
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_windows_platform_sources,
                 .flags = cxx_non_msvc_flags,
             });
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_windows_sources,
                 .flags = cxx_non_msvc_flags,
             });
         },
         .linux => {
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_posix_platform_sources,
                 .flags = cxx_non_msvc_flags,
             });
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_inotify_sources,
                 .flags = cxx_non_msvc_flags,
             });
             efsw.root_module.linkSystemLibrary("pthread", .{});
         },
         .freebsd, .openbsd, .netbsd, .dragonfly => {
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_posix_platform_sources,
                 .flags = cxx_non_msvc_flags,
             });
-            efsw.addCSourceFiles(.{
+            efsw.root_module.addCSourceFiles(.{
                 .files = efsw_kqueue_sources,
                 .flags = cxx_non_msvc_flags,
             });
@@ -132,6 +131,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const c: @import("translate_c").Translator = .init(b.dependency("translate_c", .{}), .{
+        .c_source_file = b.path("deps/efsw/include/efsw/efsw.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    efswz_mod.addImport("efsw_c", c.mod);
     efswz_mod.addIncludePath(b.path("deps/efsw/include"));
     efswz_mod.linkLibrary(efsw);
 
@@ -150,9 +155,7 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(demo_exe);
 
     const run_demo = b.addRunArtifact(demo_exe);
-    if (b.args) |args| {
-        run_demo.addArgs(args);
-    }
+    run_demo.addPassthruArgs();
 
     const demo_step = b.step("demo", "Build and run the watch demo");
     demo_step.dependOn(&run_demo.step);
@@ -167,7 +170,7 @@ pub fn build(b: *std.Build) void {
         .root_module = efswz_mod,
         .filters = test_filters,
     });
-    module_unit_tests.linkLibrary(efsw);
+    module_unit_tests.root_module.linkLibrary(efsw);
 
     const run_module_unit_tests = b.addRunArtifact(module_unit_tests);
 
@@ -177,9 +180,9 @@ pub fn build(b: *std.Build) void {
     const run_kcov = b.addSystemCommand(&.{
         "kcov",
         "--clean",
-        "--exclude-line=unreachable,expect(false),@panic,kcov-defer-error,kcov-test-cleanup",
+        "--exclude-line=unreachable,expect(false),@panic,kcov-defer-error,kcov-test-cleanup,kcov-miss",
     });
-    run_kcov.addPrefixedDirectoryArg("--include-pattern=", b.path("src"));
+    run_kcov.addDirectoryArg2(b.path("src"), .{ .prefix = "--include-pattern=", .make_absolute = true });
     const coverage_output = run_kcov.addOutputDirectoryArg(".");
     run_kcov.addArtifactArg(module_unit_tests);
 

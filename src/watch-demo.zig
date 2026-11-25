@@ -17,15 +17,16 @@ fn handleFileAction(
     filename: []const u8,
     action: efswz.Action,
     old_filename: []const u8,
-    _: ?*anyopaque,
+    user_data: ?*anyopaque,
 ) void {
+    const io: *const std.Io = @ptrCast(@alignCast(user_data.?));
     var stdout_buf: [256]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+    var stdout_writer = std.Io.File.stdout().writer(io.*, &stdout_buf);
     const stdout = &stdout_writer.interface;
 
     stdout.print(
         "[{d}] {s} dir={s} file={s}",
-        .{ @intFromEnum(watch_id), actionName(action), dir, filename },
+        .{ @backingInt(watch_id), actionName(action), dir, filename },
     ) catch {};
 
     if (old_filename.len != 0) {
@@ -36,13 +37,9 @@ fn handleFileAction(
     stdout.flush() catch {};
 }
 
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+pub fn main(init: std.process.Init) !void {
+    const io = init.io;
+    const args = try init.minimal.args.toSlice(init.arena.allocator());
 
     if (args.len != 2) {
         std.log.err("usage: {s} <path>", .{args[0]});
@@ -57,7 +54,7 @@ pub fn main() !void {
         args[1],
         handleFileAction,
         true,
-        @as(?*u8, null),
+        @constCast(&io),
     ) catch |err| switch (err) {
         error.FilenameTooLong => {
             std.log.err("path is too long for the demo watcher buffer: {s}", .{args[1]});
@@ -72,15 +69,15 @@ pub fn main() !void {
     watcher.watch();
 
     var stdout_buf: [256]u8 = undefined;
-    var stdout_writer = std.fs.File.stdout().writer(&stdout_buf);
+    var stdout_writer = std.Io.File.stdout().writer(io, &stdout_buf);
     const stdout = &stdout_writer.interface;
     try stdout.print(
         "watching {s} recursively (watch id {d})\npress ^C to quit\n",
-        .{ args[1], @intFromEnum(watch_id) },
+        .{ args[1], @backingInt(watch_id) },
     );
     try stdout.flush();
 
     while (true) {
-        std.Thread.sleep(std.time.ns_per_s);
+        try io.sleep(.fromSeconds(1), .awake);
     }
 }
